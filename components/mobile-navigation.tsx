@@ -5,16 +5,21 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Menu, X, Home, PieChart, CreditCard, Settings, LogOut, Bell, User, Wallet } from "lucide-react"
+import { Menu, X, Home, PieChart, CreditCard, Settings, LogOut, Bell, User, Wallet, BarChart3 } from "lucide-react"
 import { useAuth } from "@/context/auth-context"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 
 export function MobileNavigation() {
+  const [isMounted, setIsMounted] = useState(false)
   const pathname = usePathname()
   const { user, signOut } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
   const [notificationCount, setNotificationCount] = useState(0)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   useEffect(() => {
     // Close the sheet when the pathname changes (navigation occurs)
@@ -29,8 +34,7 @@ export function MobileNavigation() {
   }, [user])
 
   const fetchNotificationCount = async () => {
-    // This would be implemented to fetch from your backend
-    // For now, we'll simulate with a random number
+    // Simulated notification count for demo purposes
     setNotificationCount(Math.floor(Math.random() * 5))
   }
 
@@ -42,68 +46,79 @@ export function MobileNavigation() {
       .toUpperCase()
   }
 
+  if (!isMounted) return null
+
   const navItems = [
     {
       name: "Dashboard",
       href: "/dashboard",
-      icon: <Home className="h-5 w-5" />,
+      icon: <Home className="h-6 w-6" />,
     },
     {
       name: "Transactions",
       href: "/transactions",
-      icon: <Wallet className="h-5 w-5" />,
+      icon: <Wallet className="h-6 w-6" />,
     },
     {
       name: "Analytics",
       href: "/analytics",
-      icon: <PieChart className="h-5 w-5" />,
+      icon: <PieChart className="h-6 w-6" />,
     },
     {
       name: "Subscriptions",
       href: "/subscriptions",
-      icon: <CreditCard className="h-5 w-5" />,
+      icon: <CreditCard className="h-6 w-6" />,
+    },
+    {
+      name: "Reports",
+      href: "/reports",
+      icon: <BarChart3 className="h-6 w-6" />,
     },
     {
       name: "Settings",
       href: "/settings",
-      icon: <Settings className="h-5 w-5" />,
+      icon: <Settings className="h-6 w-6" />,
     },
   ]
 
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <div className="fixed bottom-0 left-0 z-50 w-full h-16 bg-background border-t border-border flex items-center justify-between px-4 md:hidden">
-        <SheetTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-10 w-10">
-            <Menu className="h-6 w-6" />
-            <span className="sr-only">Open menu</span>
-          </Button>
-        </SheetTrigger>
-
-        <div className="flex space-x-6">
-          <Link href="/dashboard" className={pathname === "/dashboard" ? "text-primary" : "text-muted-foreground"}>
-            <Home className="h-6 w-6" />
-          </Link>
-          <Link
-            href="/transactions"
-            className={pathname === "/transactions" ? "text-primary" : "text-muted-foreground"}
-          >
-            <Wallet className="h-6 w-6" />
-          </Link>
-          <Link href="/analytics" className={pathname === "/analytics" ? "text-primary" : "text-muted-foreground"}>
-            <PieChart className="h-6 w-6" />
-          </Link>
+        
+        {/* Bottom Navigation Bar */}
+        <div className="flex justify-around w-full">
+          {navItems.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex flex-col items-center justify-center ${
+                pathname === item.href ? "text-primary" : "text-muted-foreground"
+              }`}
+            >
+              {item.icon}
+              <span className="text-xs">{item.name}</span>
+            </Link>
+          ))}
         </div>
 
+        {/* Notification Icon */}
         <Link href="/notifications" className="relative">
           <Bell className="h-6 w-6" />
           {notificationCount > 0 && (
-            <Badge className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center">
+            <Badge className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center bg-red-600 text-white rounded-full">
               {notificationCount}
             </Badge>
           )}
         </Link>
       </div>
+
+      {/* Sliding Menu for Profile and More Options */}
+      <SheetTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-10 w-10 fixed bottom-20 right-4 z-50">
+          <Menu className="h-6 w-6" />
+          <span className="sr-only">Open menu</span>
+        </Button>
+      </SheetTrigger>
 
       <SheetContent side="left" className="w-[300px] sm:w-[350px] pt-12">
         <div className="flex items-center justify-between mb-8">
