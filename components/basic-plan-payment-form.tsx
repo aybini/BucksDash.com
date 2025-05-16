@@ -61,7 +61,7 @@ export function BasicPlanPaymentForm({ email, name, password, onSuccess }: Basic
         },
         body: JSON.stringify({
           paymentMethodId: paymentMethod.id,
-          priceId: process.env.STRIPE_BASIC_PRICE_ID,
+          priceId: process.env.NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID,
           email: email,
         }),
       })

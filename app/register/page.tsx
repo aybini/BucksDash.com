@@ -31,12 +31,60 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [customerId, setCustomerId] = useState<string | null>(null)
   const [showBasicPaymentForm, setShowBasicPaymentForm] = useState(false)
+  const [priceInfo, setPriceInfo] = useState<{ amount: number; currency: string } | null>(null)
+  const [loadingPrice, setLoadingPrice] = useState(false)
 
   useEffect(() => {
     console.log("Register page mounted")
     initFirebase()
     console.log("Auth initialized:", !!auth)
   }, [])
+
+  // Fetch price info when the payment form is about to be shown
+  useEffect(() => {
+    if (showBasicPaymentForm && !priceInfo && !loadingPrice) {
+      fetchPriceInfo()
+    }
+  }, [showBasicPaymentForm, priceInfo, loadingPrice])
+
+  const fetchPriceInfo = async () => {
+    setLoadingPrice(true)
+    try {
+      const response = await fetch("/api/stripe/get-price-info", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          priceId: process.env.NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID,
+        }),
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        setPriceInfo({
+          amount: data.amount,
+          currency: data.currency,
+        })
+      } else {
+        console.error("Error fetching price info:", data.error)
+        // Use fallback values
+        setPriceInfo({
+          amount: 599, // $5.99 as fallback
+          currency: "usd",
+        })
+      }
+    } catch (error) {
+      console.error("Error fetching price info:", error)
+      // Use fallback values
+      setPriceInfo({
+        amount: 599, // $5.99 as fallback
+        currency: "usd",
+      })
+    } finally {
+      setLoadingPrice(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -266,8 +314,6 @@ export default function RegisterPage() {
                 </div>
 
                 {/* 
-
-
                 <div className="flex items-center space-x-2 rounded-md border p-3">
                   <RadioGroupItem value="premium" id="premium" />
                   <Label htmlFor="premium" className="flex-1 cursor-pointer">
@@ -275,7 +321,6 @@ export default function RegisterPage() {
                     <div className="text-sm text-gray-500">$8.99/month with advanced features</div>
                   </Label>
                 </div>
-
                 */}
               </RadioGroup>
             </div>
@@ -286,10 +331,30 @@ export default function RegisterPage() {
           </Button>
         </form>
 
-        {showBasicPaymentForm && (
-          <Elements stripe={stripePromise}>
+        {showBasicPaymentForm && priceInfo && (
+          <Elements 
+            stripe={stripePromise}
+            options={{
+              mode: 'payment',
+              currency: priceInfo.currency,
+              amount: priceInfo.amount,
+              payment_method_types: ['card', 'apple_pay', 'google_pay'],
+              appearance: {
+                theme: 'stripe',
+                variables: {
+                  colorPrimary: '#E11D48', // Rose-600 color
+                },
+              }
+            }}
+          >
             <BasicPlanPaymentForm email={email} password={password} name={name} onSuccess={handleBasicPaymentSuccess} />
           </Elements>
+        )}
+        
+        {showBasicPaymentForm && !priceInfo && (
+          <div className="mt-6 text-center">
+            <div className="animate-pulse">Loading payment options...</div>
+          </div>
         )}
       </div>
     </div>
