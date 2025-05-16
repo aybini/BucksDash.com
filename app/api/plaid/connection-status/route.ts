@@ -4,6 +4,17 @@ import { doc, getDoc } from "firebase/firestore"
 
 export async function GET(request: Request) {
   try {
+    console.log("Plaid connection status request received:", request.url);
+    
+    // Check if db is properly initialized
+    if (!db) {
+      console.error("Firebase DB is not initialized");
+      return NextResponse.json(
+        { success: false, error: "Database connection error" },
+        { status: 500 }
+      );
+    }
+    
     const url = new URL(request.url)
     const userId = url.searchParams.get("userId")
 
@@ -11,6 +22,8 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: "Missing userId parameter" }, { status: 400 })
     }
 
+    console.log(`Checking Plaid connection for user: ${userId}`);
+    
     const userRef = doc(db, "users", userId)
     const userDoc = await getDoc(userRef)
 
@@ -32,6 +45,12 @@ export async function GET(request: Request) {
         ...plaidAccounts.map((account: any) => account?.institutionName).filter(Boolean),
       ]),
     ]
+
+    console.log(`Plaid connection status for user ${userId}:`, {
+      connected: hasConnection,
+      accountsCount: itemArray.length + plaidAccounts.length,
+      institutions,
+    });
 
     return NextResponse.json({
       success: true,
