@@ -303,7 +303,13 @@ export async function checkPlaidConnection(userId: string) {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000); // Reduced timeout to 5 seconds
       
-      const response = await fetch(`/api/plaid/connection-status?userId=${encodeURIComponent(userId)}`, {
+      const baseUrl = typeof window !== 'undefined' && window.location.origin ? 
+        window.location.origin : 
+        process.env.NODE_ENV === 'production' ? 
+          'https://www.bucksdash.com' : 
+          'http://localhost:3000';
+
+      const response = await fetch(`${baseUrl}/api/plaid/connection-status?userId=${encodeURIComponent(userId)}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
