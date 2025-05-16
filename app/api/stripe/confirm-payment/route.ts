@@ -2,8 +2,9 @@ import Stripe from "stripe"
 import { NextResponse } from "next/server"
 import crypto from "crypto"
 
+// Update the API version to match the expected version
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
-  apiVersion: "2023-10-16",
+  apiVersion: "2025-04-30.basil", // Updated to the version expected by your Stripe library
 })
 
 export async function POST(request: Request) {
@@ -15,6 +16,11 @@ export async function POST(request: Request) {
     .digest("hex")
 
   try {
+    // Fix: Add the https:// protocol to the return_url
+    const returnUrl = process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}/verification?email=${email}`
+      : `https://www.bucksdash.com/verification?email=${email}`;
+
     const paymentIntent = await stripe.paymentIntents.create(
       {
         amount: 599,
@@ -25,10 +31,10 @@ export async function POST(request: Request) {
         },
         confirm: true,
         receipt_email: email,
-        return_url: `${process.env.VERCEL_URL}/verification?email=${email}`,
+        return_url: returnUrl, // Use the properly formatted URL
       },
       {
-        idempotencyKey, // 👈 prevents duplicate PaymentIntent creation
+        idempotencyKey,
       },
     )
 
