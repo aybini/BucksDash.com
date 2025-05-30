@@ -9,9 +9,15 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
 
 export async function POST(request: Request) {
   try {
-    const { paymentMethodId, priceId, email } = await request.json()
+    const body = await request.json()
+    console.log('Received payment data:', body)
+    
+    const { paymentMethodId, priceId, email } = body
+    console.log('Parsed values:', { paymentMethodId, priceId, email })
+    console.log('Environment BASIC_PRICE_ID:', process.env.NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID)
 
     if (!paymentMethodId || !email) {
+      console.log('Missing required parameters - paymentMethodId:', !!paymentMethodId, 'email:', !!email)
       return NextResponse.json({ success: false, error: "Missing required parameters" }, { status: 400 })
     }
 
@@ -22,6 +28,7 @@ export async function POST(request: Request) {
 
     // Fixed: Use consistent pricing with your get-price-info API
     const amount = priceId === process.env.NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID ? 599 : 999; // $5.99 for basic, $9.99 for premium
+    console.log('Calculated amount:', amount, 'for priceId:', priceId)
 
     const paymentIntent = await stripe.paymentIntents.create(
       {
@@ -45,6 +52,8 @@ export async function POST(request: Request) {
       },
     )
 
+    console.log('Payment intent created:', paymentIntent.id, 'Status:', paymentIntent.status)
+
     if (paymentIntent.status === "succeeded") {
       return NextResponse.json({ success: true, paymentIntent })
     } else {
@@ -52,6 +61,7 @@ export async function POST(request: Request) {
     }
   } catch (error: any) {
     console.error("Error confirming payment:", error.message || error)
+    console.error("Full error object:", error)
     
     // Handle specific Stripe errors
     if (error.type === 'StripeCardError') {
@@ -62,6 +72,7 @@ export async function POST(request: Request) {
     }
     
     if (error.type === 'StripeInvalidRequestError') {
+      console.error("Invalid request error details:", error.message)
       return NextResponse.json({ 
         success: false, 
         error: "Invalid payment information" 

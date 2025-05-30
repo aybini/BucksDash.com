@@ -47,10 +47,25 @@ export function BasicPlanPaymentForm({ email, name, password, onSuccess }: Basic
 
       // Handle Apple Pay/Google Pay payment
       pr.on('paymentmethod', async (ev) => {
+        console.log('Apple Pay event data:', ev)
+        console.log('Payment method:', ev.paymentMethod)
+        console.log('Payment method ID:', ev.paymentMethod.id)
+        
         setIsLoading(true)
         setCardError(null)
 
         try {
+          // ADD DEBUG LOGGING HERE
+          console.log('About to send to API:', {
+            paymentMethodId: ev.paymentMethod.id,
+            priceId: process.env.NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID,
+            email: email
+          })
+          console.log('Environment check:', {
+            priceIdExists: !!process.env.NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID,
+            priceIdValue: process.env.NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID
+          })
+
           // Confirm payment with Stripe
           const response = await fetch("/api/stripe/confirm-payment", {
             method: "POST",
@@ -64,7 +79,9 @@ export function BasicPlanPaymentForm({ email, name, password, onSuccess }: Basic
             }),
           })
 
+          console.log('API response status:', response.status)
           const data = await response.json()
+          console.log('API response data:', data)
 
           if (!data.success) {
             ev.complete('fail')
@@ -119,6 +136,7 @@ export function BasicPlanPaymentForm({ email, name, password, onSuccess }: Basic
       })
 
       pr.canMakePayment().then((result: any) => {
+        console.log('Payment request can make payment result:', result)
         if (result) {
           setPaymentRequest(pr)
           setCanMakePayment(true)
@@ -154,6 +172,13 @@ export function BasicPlanPaymentForm({ email, name, password, onSuccess }: Basic
         return
       }
 
+      // Debug logging for card payments too
+      console.log('Card payment - About to send to API:', {
+        paymentMethodId: paymentMethod.id,
+        priceId: process.env.NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID,
+        email: email
+      })
+
       const response = await fetch("/api/stripe/confirm-payment", {
         method: "POST",
         headers: {
@@ -167,6 +192,7 @@ export function BasicPlanPaymentForm({ email, name, password, onSuccess }: Basic
       })
 
       const data = await response.json()
+      console.log('Card payment API response:', data)
 
       if (!data.success) {
         setCardError(data.error || "Failed to confirm payment")
