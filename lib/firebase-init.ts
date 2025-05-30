@@ -42,32 +42,42 @@ function getFirebaseApp(): FirebaseApp {
 }
 
 // Initialize Firestore - safe for both client and server
+// Singleton pattern for Firestore
+let firestoreInstance: Firestore | null = null;
+
 function getFirestoreDb(): Firestore {
   try {
-    const app = getFirebaseApp();
-    
-    // Only use persistent cache in browser environment
-    if (typeof window !== "undefined") {
-      try {
-        return initializeFirestore(app, {
-          localCache: persistentLocalCache({
-            tabManager: persistentMultipleTabManager(),
-          }),
-        });
-      } catch (error) {
-        console.error("Error initializing Firestore with persistent cache:", error);
-        // Fall back to standard initialization if persistent cache fails
-        return getFirestore(app);
+    if (!firestoreInstance) {
+      const app = getFirebaseApp();
+
+      // Only use persistent cache in browser environment
+      if (typeof window !== "undefined") {
+        try {
+          firestoreInstance = initializeFirestore(app, {
+            localCache: persistentLocalCache({
+              tabManager: persistentMultipleTabManager(),
+            }),
+          });
+          console.log("Firestore initialized with persistent cache");
+        } catch (error) {
+          console.error("Error initializing Firestore with persistent cache:", error);
+          // Fall back to standard initialization if persistent cache fails
+          firestoreInstance = getFirestore(app);
+        }
+      } else {
+        // For server, use standard Firestore without persistence
+        firestoreInstance = getFirestore(app);
+        console.log("Firestore initialized without persistent cache (server)");
       }
-    } else {
-      // For server, use standard Firestore without persistence
-      return getFirestore(app);
     }
+
+    return firestoreInstance;
   } catch (error) {
     console.error("Error getting Firestore instance:", error);
     throw error;
   }
 }
+
 
 // Create and export the Firebase instances
 export const app = getFirebaseApp();
@@ -197,14 +207,14 @@ export const initFirebase = () => {
   try {
     const firebaseApp = getFirebaseApp();
     const firebaseDb = getFirestoreDb();
-    
+
     let firebaseAuth = null;
     let firebaseStorage = null;
-    
+
     if (typeof window !== "undefined") {
       firebaseAuth = getAuth(firebaseApp);
       firebaseStorage = getStorage(firebaseApp);
-      
+
       // Use emulator if specified (client-side only)
       if (process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === "true") {
         console.log("Using Firebase emulator");
@@ -219,8 +229,10 @@ export const initFirebase = () => {
   }
 };
 
-// Initialize Firebase on module load for browser only
-if (typeof window !== "undefined") {
+
+
+// Initialize Firebase on module load (client only)
+if (typeof window !== "undefined" && !getApps().length) {
   console.log("Initializing Firebase on module load");
   initFirebase();
 }

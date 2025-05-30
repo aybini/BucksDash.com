@@ -115,9 +115,8 @@ export default function RegisterPage() {
             variant: "destructive",
             action: (
               <Button
-                variant="outline"
-                size="sm"
-                onClick={() => router.push(`/login?email=${encodeURIComponent(email)}`)}
+              className="border border-gray-200 bg-transparent hover:bg-gray-100"
+              onClick={() => router.push(`/login?email=${encodeURIComponent(email)}`)}
               >
                 Go to Login
               </Button>
@@ -186,8 +185,7 @@ export default function RegisterPage() {
           variant: "destructive",
           action: (
             <Button
-              variant="outline"
-              size="sm"
+              
               onClick={() => router.push(`/login?email=${encodeURIComponent(email)}`)}
             >
               Go to Login
@@ -308,8 +306,8 @@ export default function RegisterPage() {
                 <div className="flex items-center space-x-2 rounded-md border p-3">
                   <RadioGroupItem value="basic" id="basic" />
                   <Label htmlFor="basic" className="flex-1 cursor-pointer">
-                    <div className="font-medium">Basic</div>
-                    <div className="text-sm text-gray-500">One-time payment and be part of the group</div>
+                    <div className="font-medium">Basic -$5.99</div>
+                    <div className="text-sm text-gray-500">One-time payment</div>
                   </Label>
                 </div>
 
@@ -338,7 +336,7 @@ export default function RegisterPage() {
               mode: 'payment',
               currency: priceInfo.currency,
               amount: priceInfo.amount,
-              payment_method_types: ['card', 'apple_pay', 'google_pay'],
+              payment_method_types: ['card'],
               appearance: {
                 theme: 'stripe',
                 variables: {
