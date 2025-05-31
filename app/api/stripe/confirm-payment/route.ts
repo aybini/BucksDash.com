@@ -28,6 +28,10 @@ const paymentIntent = await stripe.paymentIntents.create(
     currency: "usd",
     payment_method: paymentMethodId,
     confirm: true,
+    payment_method_types: ['card'], // ✅ This tells Stripe exactly what you're using
+    automatic_payment_methods: {
+      enabled: false, // ✅ This disables the redirect-based methods
+    },
     receipt_email: email,
     description: `BucksDash ${amount === 599 ? 'Basic' : 'Premium'} Plan`,
     metadata: {
@@ -35,12 +39,10 @@ const paymentIntent = await stripe.paymentIntents.create(
       priceId,
       plan: amount === 599 ? 'basic' : 'premium',
     },
-    automatic_payment_methods: {
-      enabled: false, // 👈 This line overrides dashboard default
-    },
   },
   { idempotencyKey }
 )
+
 
 
     if (paymentIntent.status === "succeeded") {
