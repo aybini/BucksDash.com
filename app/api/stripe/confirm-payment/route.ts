@@ -30,27 +30,25 @@ export async function POST(request: Request) {
     const amount = priceId === process.env.NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID ? 599 : 999; // $5.99 for basic, $9.99 for premium
     console.log('Calculated amount:', amount, 'for priceId:', priceId)
 
-    const paymentIntent = await stripe.paymentIntents.create(
-      {
-        amount,
-        currency: "usd",
-        payment_method: paymentMethodId,
-        automatic_payment_methods: {
-          enabled: true,
-        },
-        confirm: true,
-        receipt_email: email,
-        description: `BucksDash ${priceId === process.env.NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID ? 'Basic' : 'Premium'} Plan`,
-        metadata: {
-          email,
-          priceId,
-          plan: priceId === process.env.NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID ? 'basic' : 'premium',
-        },
-      },
-      {
-        idempotencyKey,
-      },
-    )
+const paymentIntent = await stripe.paymentIntents.create(
+  {
+    amount,
+    currency: "usd",
+    payment_method: paymentMethodId,
+    confirm: true,
+    receipt_email: email,
+    description: `BucksDash ${priceId === process.env.NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID ? 'Basic' : 'Premium'} Plan`,
+    metadata: {
+      email,
+      priceId,
+      plan: priceId === process.env.NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID ? 'basic' : 'premium',
+    },
+  },
+  {
+    idempotencyKey,
+  },
+)
+
 
     console.log('Payment intent created:', paymentIntent.id, 'Status:', paymentIntent.status)
 
