@@ -22,22 +22,26 @@ export async function POST(request: Request) {
 
     const amount = priceId === process.env.NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID ? 599 : 999
 
-    const paymentIntent = await stripe.paymentIntents.create(
-      {
-        amount,
-        currency: "usd",
-        payment_method: paymentMethodId,
-        confirm: true,
-        receipt_email: email,
-        description: `BucksDash ${amount === 599 ? 'Basic' : 'Premium'} Plan`,
-        metadata: {
-          email,
-          priceId,
-          plan: amount === 599 ? 'basic' : 'premium',
-        },
-      },
-      { idempotencyKey }
-    )
+const paymentIntent = await stripe.paymentIntents.create(
+  {
+    amount,
+    currency: "usd",
+    payment_method: paymentMethodId,
+    confirm: true,
+    receipt_email: email,
+    description: `BucksDash ${amount === 599 ? 'Basic' : 'Premium'} Plan`,
+    metadata: {
+      email,
+      priceId,
+      plan: amount === 599 ? 'basic' : 'premium',
+    },
+    automatic_payment_methods: {
+      enabled: false, // 👈 This line overrides dashboard default
+    },
+  },
+  { idempotencyKey }
+)
+
 
     if (paymentIntent.status === "succeeded") {
       return NextResponse.json({ success: true, paymentIntent })
