@@ -27,6 +27,7 @@ export function BasicPlanPaymentForm({ email, name, password, onSuccess }: Basic
   const [cardError, setCardError] = useState<string | null>(null)
   const [paymentRequest, setPaymentRequest] = useState<any>(null)
   const [canMakePayment, setCanMakePayment] = useState(false)
+  const [debugInfo, setDebugInfo] = useState<any>({})
   const stripe = useStripe()
   const elements = useElements()
   const { toast } = useToast()
@@ -34,39 +35,28 @@ export function BasicPlanPaymentForm({ email, name, password, onSuccess }: Basic
 
   useEffect(() => {
     if (stripe) {
+      setDebugInfo(prev => ({ ...prev, stripeLoaded: true }))
+      
       const pr = stripe.paymentRequest({
         country: "US",
         currency: "usd",
         total: {
           label: "Basic Plan",
-          amount: 599, // Fixed to match your API (599 cents = $5.99)
+          amount: 599,
         },
         requestPayerName: true,
         requestPayerEmail: true,
       })
 
+      setDebugInfo(prev => ({ ...prev, paymentRequestCreated: true }))
+
       // Handle Apple Pay/Google Pay payment
       pr.on('paymentmethod', async (ev) => {
-        console.log('Apple Pay event data:', ev)
-        console.log('Payment method:', ev.paymentMethod)
-        console.log('Payment method ID:', ev.paymentMethod.id)
-        
+        setDebugInfo(prev => ({ ...prev, paymentMethodTriggered: true }))
         setIsLoading(true)
         setCardError(null)
 
         try {
-          // ADD DEBUG LOGGING HERE
-          console.log('About to send to API:', {
-            paymentMethodId: ev.paymentMethod.id,
-            priceId: process.env.NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID,
-            email: email
-          })
-          console.log('Environment check:', {
-            priceIdExists: !!process.env.NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID,
-            priceIdValue: process.env.NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID
-          })
-
-          // Confirm payment with Stripe
           const response = await fetch("/api/stripe/confirm-payment", {
             method: "POST",
             headers: {
@@ -79,9 +69,7 @@ export function BasicPlanPaymentForm({ email, name, password, onSuccess }: Basic
             }),
           })
 
-          console.log('API response status:', response.status)
           const data = await response.json()
-          console.log('API response data:', data)
 
           if (!data.success) {
             ev.complete('fail')
@@ -90,10 +78,8 @@ export function BasicPlanPaymentForm({ email, name, password, onSuccess }: Basic
             return
           }
 
-          // Complete the payment
           ev.complete('success')
 
-          // Create Firebase user account
           try {
             const user = await signUp(email, password, name)
             await initializeUserData(user.uid, { name, email, plan: "basic" })
@@ -136,12 +122,29 @@ export function BasicPlanPaymentForm({ email, name, password, onSuccess }: Basic
       })
 
       pr.canMakePayment().then((result: any) => {
-        console.log('Payment request can make payment result:', result)
+        setDebugInfo(prev => ({ 
+          ...prev, 
+          canMakePaymentResult: result,
+          canMakePaymentBool: !!result,
+          applePay: result?.applePay || false,
+          googlePay: result?.googlePay || false,
+          link: result?.link || false,
+          userAgent: navigator.userAgent,
+          priceId: process.env.NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID
+        }))
+        
         if (result) {
           setPaymentRequest(pr)
           setCanMakePayment(true)
         }
+      }).catch((error: any) => {
+        setDebugInfo(prev => ({ 
+          ...prev, 
+          canMakePaymentError: error.message || error 
+        }))
       })
+    } else {
+      setDebugInfo(prev => ({ ...prev, stripeLoaded: false }))
     }
   }, [stripe, email, name, password, toast, router])
 
@@ -172,13 +175,6 @@ export function BasicPlanPaymentForm({ email, name, password, onSuccess }: Basic
         return
       }
 
-      // Debug logging for card payments too
-      console.log('Card payment - About to send to API:', {
-        paymentMethodId: paymentMethod.id,
-        priceId: process.env.NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID,
-        email: email
-      })
-
       const response = await fetch("/api/stripe/confirm-payment", {
         method: "POST",
         headers: {
@@ -192,7 +188,6 @@ export function BasicPlanPaymentForm({ email, name, password, onSuccess }: Basic
       })
 
       const data = await response.json()
-      console.log('Card payment API response:', data)
 
       if (!data.success) {
         setCardError(data.error || "Failed to confirm payment")
@@ -241,72 +236,92 @@ export function BasicPlanPaymentForm({ email, name, password, onSuccess }: Basic
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {canMakePayment && paymentRequest && (
-        <div className="space-y-3">
-          <div className="text-center">
-            <div className="text-sm font-medium text-gray-700 mb-2">Quick Pay</div>
-            <PaymentRequestButtonElement
-              options={{ 
-                paymentRequest,
-                style: {
-                  paymentRequestButton: {
-                    theme: 'dark',
-                    height: '48px',
-                  },
-                }
-              }}
-              className="w-full"
-            />
-          </div>
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-2 text-gray-500">Or pay with card</span>
-            </div>
-          </div>
+    <div className="space-y-6">
+      {/* DEBUG INFO - Remove this after debugging */}
+      <div className="p-3 bg-gray-100 text-xs rounded border">
+        <div className="font-bold mb-2">Debug Info:</div>
+        <div>Stripe Loaded: {debugInfo.stripeLoaded ? '✅' : '❌'}</div>
+        <div>Payment Request Created: {debugInfo.paymentRequestCreated ? '✅' : '❌'}</div>
+        <div>Can Make Payment: {debugInfo.canMakePaymentBool ? '✅' : '❌'}</div>
+        <div>Apple Pay Available: {debugInfo.applePay ? '✅' : '❌'}</div>
+        <div>Google Pay Available: {debugInfo.googlePay ? '✅' : '❌'}</div>
+        <div>Link Available: {debugInfo.link ? '✅' : '❌'}</div>
+        <div>Price ID: {debugInfo.priceId || 'MISSING'}</div>
+        {debugInfo.canMakePaymentError && (
+          <div className="text-red-600">Error: {debugInfo.canMakePaymentError}</div>
+        )}
+        <div className="mt-2 text-xs break-words">
+          User Agent: {debugInfo.userAgent?.substring(0, 100)}...
         </div>
-      )}
-
-      <div className="space-y-2">
-        <label className="block text-sm font-medium">Card Details</label>
-        <div className="p-3 border rounded-md">
-          <CardElement
-            options={{
-              style: {
-                base: {
-                  fontSize: "16px",
-                  color: "#424770",
-                  "::placeholder": {
-                    color: "#aab7c4",
-                  },
-                },
-                invalid: {
-                  color: "#9e2146",
-                },
-              },
-            }}
-          />
-        </div>
-        {cardError && <p className="text-sm text-red-500">{cardError}</p>}
       </div>
 
-      <Button 
-        type="submit" 
-        className="w-full bg-rose-600 hover:bg-rose-700" 
-        disabled={isLoading || !stripe}
-      >
-        {isLoading ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Processing...
-          </>
-        ) : (
-          "Purchase Basic Plan - $5.99"
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {canMakePayment && paymentRequest && (
+          <div className="space-y-3">
+            <div className="text-center">
+              <div className="text-sm font-medium text-gray-700 mb-2">Quick Pay</div>
+              <PaymentRequestButtonElement
+                options={{ 
+                  paymentRequest,
+                  style: {
+                    paymentRequestButton: {
+                      theme: 'dark',
+                      height: '48px',
+                    },
+                  }
+                }}
+                className="w-full"
+              />
+            </div>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-2 text-gray-500">Or pay with card</span>
+              </div>
+            </div>
+          </div>
         )}
-      </Button>
-    </form>
+
+        <div className="space-y-2">
+          <label className="block text-sm font-medium">Card Details</label>
+          <div className="p-3 border rounded-md">
+            <CardElement
+              options={{
+                style: {
+                  base: {
+                    fontSize: "16px",
+                    color: "#424770",
+                    "::placeholder": {
+                      color: "#aab7c4",
+                    },
+                  },
+                  invalid: {
+                    color: "#9e2146",
+                  },
+                },
+              }}
+            />
+          </div>
+          {cardError && <p className="text-sm text-red-500">{cardError}</p>}
+        </div>
+
+        <Button 
+          type="submit" 
+          className="w-full bg-rose-600 hover:bg-rose-700" 
+          disabled={isLoading || !stripe}
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Processing...
+            </>
+          ) : (
+            "Purchase Basic Plan - $5.99"
+          )}
+        </Button>
+      </form>
+    </div>
   )
 }
