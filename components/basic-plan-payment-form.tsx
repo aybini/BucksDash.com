@@ -27,7 +27,23 @@ export function BasicPlanPaymentForm({ email, name, password, onSuccess }: Basic
   const [cardError, setCardError] = useState<string | null>(null)
   const [paymentRequest, setPaymentRequest] = useState<any>(null)
   const [canMakePayment, setCanMakePayment] = useState(false)
-  const [debugInfo, setDebugInfo] = useState<any>({})
+  const [debugInfo, setDebugInfo] = useState<{
+    stripeLoaded?: boolean;
+    paymentRequestCreated?: boolean;
+    paymentMethodTriggered?: boolean;
+    canMakePaymentResult?: any;
+    canMakePaymentBool?: boolean;
+    applePay?: boolean;
+    googlePay?: boolean;
+    link?: boolean;
+    userAgent?: string;
+    priceId?: string;
+    canMakePaymentError?: string;
+    requestBody?: any;
+    apiResponse?: any;
+  }>({})
+  const [applePayError, setApplePayError] = useState<string | null>(null)
+  const [applePayStatus, setApplePayStatus] = useState<string>("")
   const stripe = useStripe()
   const elements = useElements()
   const { toast } = useToast()
@@ -52,32 +68,48 @@ export function BasicPlanPaymentForm({ email, name, password, onSuccess }: Basic
 
       // Handle Apple Pay/Google Pay payment
       pr.on('paymentmethod', async (ev) => {
+        setApplePayStatus("Starting Apple Pay payment...")
+        setApplePayError(null)
         setDebugInfo(prev => ({ ...prev, paymentMethodTriggered: true }))
         setIsLoading(true)
         setCardError(null)
 
         try {
+          setApplePayStatus("Sending payment to server...")
+          
+          const requestBody = {
+            paymentMethodId: ev.paymentMethod.id,
+            priceId: process.env.NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID,
+            email,
+          }
+          
+          setDebugInfo(prev => ({ ...prev, requestBody }))
+
           const response = await fetch("/api/stripe/confirm-payment", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({
-              paymentMethodId: ev.paymentMethod.id,
-              priceId: process.env.NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID,
-              email,
-            }),
+            body: JSON.stringify(requestBody),
           })
 
+          setApplePayStatus("Received response from server...")
+          
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+          }
+
           const data = await response.json()
+          setDebugInfo(prev => ({ ...prev, apiResponse: data }))
 
           if (!data.success) {
+            setApplePayError(`API Error: ${data.error}`)
             ev.complete('fail')
-            setCardError(data.error || "Failed to confirm payment")
             setIsLoading(false)
             return
           }
 
+          setApplePayStatus("Payment successful! Creating account...")
           ev.complete('success')
 
           try {
@@ -91,31 +123,13 @@ export function BasicPlanPaymentForm({ email, name, password, onSuccess }: Basic
 
             router.push("/verification?email=" + encodeURIComponent(email))
           } catch (authError: any) {
+            setApplePayError(`Account creation error: ${authError.message}`)
             console.error("Sign up error:", authError)
-            let errorMessage = "There was an error creating your account. Please try again."
-
-            if (authError.code === "auth/email-already-in-use") {
-              errorMessage = "This email is already registered. Please log in instead."
-            } else if (authError.code === "auth/invalid-email") {
-              errorMessage = "The email address is not valid."
-            } else if (authError.code === "auth/weak-password") {
-              errorMessage = "The password is too weak. Please choose a stronger password."
-            }
-
-            toast({
-              title: "Error",
-              description: errorMessage,
-              variant: "destructive",
-            })
           }
-        } catch (error) {
-          console.error("Payment error:", error)
+        } catch (error: any) {
+          setApplePayError(`Payment error: ${error.message}`)
+          setApplePayStatus("Payment failed")
           ev.complete('fail')
-          toast({
-            title: "Payment Error",
-            description: "There was a problem processing your payment",
-            variant: "destructive",
-          })
         } finally {
           setIsLoading(false)
         }
@@ -237,7 +251,7 @@ export function BasicPlanPaymentForm({ email, name, password, onSuccess }: Basic
 
   return (
     <div className="space-y-6">
-      {/* DEBUG INFO - Remove this after debugging */}
+      {/* DEBUG INFO */}
       <div className="p-3 bg-gray-100 text-xs rounded border">
         <div className="font-bold mb-2">Debug Info:</div>
         <div>Stripe Loaded: {debugInfo.stripeLoaded ? '✅' : '❌'}</div>
@@ -247,12 +261,38 @@ export function BasicPlanPaymentForm({ email, name, password, onSuccess }: Basic
         <div>Google Pay Available: {debugInfo.googlePay ? '✅' : '❌'}</div>
         <div>Link Available: {debugInfo.link ? '✅' : '❌'}</div>
         <div>Price ID: {debugInfo.priceId || 'MISSING'}</div>
-        {debugInfo.canMakePaymentError && (
-          <div className="text-red-600">Error: {debugInfo.canMakePaymentError}</div>
+        
+        {applePayStatus && (
+          <div className="mt-2 p-2 bg-blue-100 rounded">
+            <div className="font-bold">Apple Pay Status:</div>
+            <div>{applePayStatus}</div>
+          </div>
         )}
-        <div className="mt-2 text-xs break-words">
-          User Agent: {debugInfo.userAgent?.substring(0, 100)}...
-        </div>
+        
+        {applePayError && (
+          <div className="mt-2 p-2 bg-red-100 rounded">
+            <div className="font-bold text-red-600">Apple Pay Error:</div>
+            <div className="text-red-600">{applePayError}</div>
+          </div>
+        )}
+        
+        {debugInfo.requestBody && (
+          <div className="mt-2 p-2 bg-yellow-100 rounded">
+            <div className="font-bold">Request Sent:</div>
+            <div className="text-xs break-words">
+              {JSON.stringify(debugInfo.requestBody, null, 2)}
+            </div>
+          </div>
+        )}
+        
+        {debugInfo.apiResponse && (
+          <div className="mt-2 p-2 bg-green-100 rounded">
+            <div className="font-bold">API Response:</div>
+            <div className="text-xs break-words">
+              {JSON.stringify(debugInfo.apiResponse, null, 2)}
+            </div>
+          </div>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
