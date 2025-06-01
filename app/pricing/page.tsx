@@ -45,7 +45,7 @@ export default function PricingPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="text-center">
-              <div className="text-4xl font-bold text-green-600">$8.99</div>
+              <div className="text-4xl font-bold text-green-600">$5.99</div>
               <p className="text-muted-foreground">One-time payment</p>
             </div>
             <ul className="space-y-2 text-left">
