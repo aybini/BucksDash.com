@@ -253,14 +253,14 @@ export function BasicPlanPaymentForm({ email, name, password, onSuccess }: Basic
     <div className="space-y-6">
       {/* DEBUG INFO */}
       <div className="p-3 bg-gray-100 text-xs rounded border">
-        <div className="font-bold mb-2">Debug Info:</div>
-        <div>Stripe Loaded: {debugInfo.stripeLoaded ? '✅' : '❌'}</div>
-        <div>Payment Request Created: {debugInfo.paymentRequestCreated ? '✅' : '❌'}</div>
-        <div>Can Make Payment: {debugInfo.canMakePaymentBool ? '✅' : '❌'}</div>
-        <div>Apple Pay Available: {debugInfo.applePay ? '✅' : '❌'}</div>
-        <div>Google Pay Available: {debugInfo.googlePay ? '✅' : '❌'}</div>
-        <div>Link Available: {debugInfo.link ? '✅' : '❌'}</div>
-        <div>Price ID: {debugInfo.priceId || 'MISSING'}</div>
+        {/*<div className="font-bold mb-2">Debug Info:</div>*/}
+        {/*<div>Stripe Loaded: {debugInfo.stripeLoaded ? '✅' : '❌'}</div>*/}
+        {/*<div>Payment Request Created: {debugInfo.paymentRequestCreated ? '✅' : '❌'}</div>*/}
+        {/*<div>Can Make Payment: {debugInfo.canMakePaymentBool ? '✅' : '❌'}</div>*/}
+        {/*<div>Apple Pay Available: {debugInfo.applePay ? '✅' : '❌'}</div>*/}
+        {/*<div>Google Pay Available: {debugInfo.googlePay ? '✅' : '❌'}</div>*/}
+        {/*<div>Link Available: {debugInfo.link ? '✅' : '❌'}</div>*/}
+        {/*<div>Price ID: {debugInfo.priceId || 'MISSING'}</div>*/}
         
         {applePayStatus && (
           <div className="mt-2 p-2 bg-blue-100 rounded">
