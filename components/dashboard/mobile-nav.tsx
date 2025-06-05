@@ -4,18 +4,19 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Menu, Home, PieChart, CreditCard, Settings, LogOut, Wallet, Target } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useAuth } from "@/lib/auth-context"
 import { cn } from "@/lib/utils"
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
 
 export function MobileNav() {
   const [isMounted, setIsMounted] = useState(false)
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
-  const { user, userPlan } = useAuth()
-  const isPremium = userPlan === "premium"
+  const auth = useAuth()
+  const isPremium = (auth as any)?.userPlan === "premium"
 
   // Ensure component only renders client-side
   useEffect(() => {
@@ -107,6 +108,11 @@ export function MobileNav() {
 
         {/* Sidebar for Additional Options */}
         <SheetContent side="left" className="pr-0 sm:max-w-xs">
+          <SheetHeader>
+            <VisuallyHidden>
+              <SheetTitle>Navigation Menu</SheetTitle>
+            </VisuallyHidden>
+          </SheetHeader>
           <ScrollArea className="my-4 h-[calc(100vh-8rem)] pb-10 pl-6">
             <div className="flex flex-col space-y-3">
               {sidebarItems.map((item) => (

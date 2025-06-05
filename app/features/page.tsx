@@ -1,3 +1,6 @@
+"use client"
+
+import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import {
@@ -12,14 +15,23 @@ import {
   PiggyBank,
   CreditCard,
   DollarSign,
+  ChevronDown,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 export default function FeaturesPage() {
+  const [selectedTab, setSelectedTab] = useState("ai")
+
   return (
-    
     <div className="flex flex-col min-h-screen">
       <header className="px-4 lg:px-6 h-16 flex items-center">
         <Link className="flex items-center justify-center" href="/">
@@ -185,7 +197,7 @@ export default function FeaturesPage() {
                   </CardHeader>
                   <CardContent className="flex-1">
                     <p className="text-sm text-muted-foreground mb-4">
-                      Never lose track of your subscriptions again. Rose automatically detects recurring payments and
+                      Never lose track of your subscriptions again. Bucksdash automatically detects recurring payments and
                       helps you manage them.
                     </p>
                     <ul className="space-y-2 text-sm">
@@ -244,13 +256,30 @@ export default function FeaturesPage() {
                 </Badge>
               </div>
 
-              <Tabs defaultValue="ai" className="w-full">
-                <TabsList className="grid w-full grid-cols-5">
-                  <TabsTrigger value="ai">AI-Powered</TabsTrigger>
-                  <TabsTrigger value="tiktok">TikTok Users</TabsTrigger>
-                  <TabsTrigger value="students">Students</TabsTrigger>
-                  <TabsTrigger value="professionals">Professionals</TabsTrigger>
-                  <TabsTrigger value="entrepreneurs">Entrepreneurs</TabsTrigger>
+              <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
+                {/* Mobile: Dropdown selector */}
+                <div className="block md:hidden mb-6">
+                  <Select value={selectedTab} onValueChange={setSelectedTab}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select feature category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ai">🤖 AI-Powered Features</SelectItem>
+                      <SelectItem value="tiktok">📱 TikTok Users</SelectItem>
+                      <SelectItem value="students">🎓 Students</SelectItem>
+                      <SelectItem value="professionals">💼 Professionals</SelectItem>
+                      <SelectItem value="entrepreneurs">🚀 Entrepreneurs</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Desktop: Tab navigation */}
+                <TabsList className="hidden md:grid w-full grid-cols-5">
+                  <TabsTrigger value="ai" className="text-sm">AI-Powered</TabsTrigger>
+                  <TabsTrigger value="tiktok" className="text-sm">TikTok Users</TabsTrigger>
+                  <TabsTrigger value="students" className="text-sm">Students</TabsTrigger>
+                  <TabsTrigger value="professionals" className="text-sm">Professionals</TabsTrigger>
+                  <TabsTrigger value="entrepreneurs" className="text-sm">Entrepreneurs</TabsTrigger>
                 </TabsList>
 
                 {/* AI-Powered Tab */}
@@ -614,7 +643,7 @@ export default function FeaturesPage() {
               <div className="rounded-xl bg-rose-50 dark:bg-rose-950/20 p-8 md:p-12">
                 <h2 className="text-3xl font-bold mb-4">Ready to Experience BucksDash Finance?</h2>
                 <p className="text-lg mb-8 max-w-2xl mx-auto">
-                  Start your financial journey today with our powerful tools and personalized insights.
+                  Start your financial journey today with our powerful tools and personalized insight.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Link href="/register">

@@ -1,7 +1,10 @@
-import { initializeApp, getApps, type FirebaseApp, getApp } from "firebase/app"
-import { getAuth, type Auth } from "firebase/auth"
+// lib/firebase-init.ts
+
+import { initializeApp, getApps, type FirebaseApp, getApp } from "firebase/app";
+import { getAuth, type Auth } from "firebase/auth";
 import {
   getFirestore,
+  initializeFirestore,                       // used instead of plain getFirestore when persisting
   enableNetwork as enableFirestoreNetwork,
   disableNetwork,
   type Firestore,
@@ -10,111 +13,103 @@ import {
   setDoc,
   serverTimestamp,
   connectFirestoreEmulator,
-  initializeFirestore,
-  persistentLocalCache,
-  persistentMultipleTabManager,
-} from "firebase/firestore"
-import { getStorage } from "firebase/storage"
+  persistentLocalCache,                        // unchanged
+  persistentMultipleTabManager,                // unchanged
+} from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
-// Firebase config
+// —————— Your original Firebase config ——————
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
-}
+  apiKey:                process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
+  authDomain:            process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
+  projectId:             process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
+  storageBucket:         process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET!,
+  messagingSenderId:     process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID!,
+  appId:                 process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
+  measurementId:         process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID!,
+};
 
-// Initialize Firebase app instance - safe for both client and server
+// —————— Initialize (or retrieve) the singleton FirebaseApp ——————
 function getFirebaseApp(): FirebaseApp {
   if (getApps().length === 0) {
     try {
       return initializeApp(firebaseConfig);
     } catch (error) {
       console.error("Error initializing Firebase app:", error);
-      throw error; // Re-throw to make errors visible
+      throw error;
     }
   } else {
     return getApp();
   }
 }
 
-// Initialize Firestore - safe for both client and server
-// Singleton pattern for Firestore
+// —————— Singleton Firestore instance ——————
 let firestoreInstance: Firestore | null = null;
 
 function getFirestoreDb(): Firestore {
-  try {
-    if (!firestoreInstance) {
-      const app = getFirebaseApp();
-
-      // Only use persistent cache in browser environment
-      if (typeof window !== "undefined") {
-        try {
-          firestoreInstance = initializeFirestore(app, {
-            localCache: persistentLocalCache({
-              tabManager: persistentMultipleTabManager(),
-            }),
-          });
-          console.log("Firestore initialized with persistent cache");
-        } catch (error) {
-          console.error("Error initializing Firestore with persistent cache:", error);
-          // Fall back to standard initialization if persistent cache fails
-          firestoreInstance = getFirestore(app);
-        }
-      } else {
-        // For server, use standard Firestore without persistence
-        firestoreInstance = getFirestore(app);
-        console.log("Firestore initialized without persistent cache (server)");
-      }
-    }
-
+  if (firestoreInstance) {
     return firestoreInstance;
-  } catch (error) {
-    console.error("Error getting Firestore instance:", error);
-    throw error;
   }
+
+  const app = getFirebaseApp();
+
+  // ←— **NEW**: Only request IndexedDB persistence in production on the client
+  if (typeof window !== "undefined" && process.env.NODE_ENV === "production") {
+    try {
+      firestoreInstance = initializeFirestore(app, {
+        localCache: persistentLocalCache({
+          tabManager: persistentMultipleTabManager(),
+        }),
+      });
+      console.log("Firestore initialized with persistent cache (multi-tab).");
+    } catch (err: any) {
+      console.warn(
+        "Could not initialize Firestore persistence. Falling back to memory mode. ",
+        err
+      );
+      firestoreInstance = getFirestore(app);
+    }
+  } else {
+    // ←— **UNCHANGED** but moved here: 
+    // In development (or on the server), get a plain (memory-only) Firestore instance
+    firestoreInstance = getFirestore(app);
+    console.log(
+      typeof window === "undefined"
+        ? "Firestore initialized without persistence (server)."
+        : "Firestore initialized without persistence (development)."
+    );
+  }
+
+  return firestoreInstance;
 }
 
-
-// Create and export the Firebase instances
+// —————— Export singletons ——————
 export const app = getFirebaseApp();
 export const db = getFirestoreDb();
 
-// Browser-only services
-export const auth = typeof window !== "undefined" ? getAuth(app) : null;
+// Browser-only services: unmodified
+export const auth: Auth | null = typeof window !== "undefined" ? getAuth(app) : null;
 export const storage = typeof window !== "undefined" ? getStorage(app) : null;
 
-// Connection state tracking (browser only)
+// —————— Connection-checking logic (unchanged) ——————
 let isFirestoreConnected = false;
 let connectionCheckInterval: NodeJS.Timeout | null = null;
 let connectionRetryCount = 0;
 const MAX_RETRY_COUNT = 5;
 
-// Modify the checkFirestoreConnection function to use a read operation instead of a write
-// and to handle permission errors properly
 export async function checkFirestoreConnection(): Promise<boolean> {
   if (typeof window === "undefined") return false;
 
   try {
-    // Instead of writing to a test document, try to read from a collection the user should have access to
-    // First check if we have a logged in user
     const currentUser = auth?.currentUser;
-
     if (currentUser) {
-      // If user is logged in, try to read their user document
       const userDocRef = doc(db, `users/${currentUser.uid}`);
       await getDoc(userDocRef);
     } else {
-      // If no user is logged in, just check if Firestore is reachable by getting any public document
-      // or by checking the connection state
       const firestoreApp = getFirestore(app);
       await enableFirestoreNetwork(firestoreApp);
     }
 
-    // If we get here, connection is successful
     if (!isFirestoreConnected) {
       console.log("Firestore connection established");
       isFirestoreConnected = true;
@@ -126,31 +121,31 @@ export async function checkFirestoreConnection(): Promise<boolean> {
     const errorCode = error?.code || "";
     const errorMessage = error?.message || "";
 
-    // If this is a permission error but Firestore is actually connected
     if (errorCode === "permission-denied") {
-      console.log("Firestore is connected but permission denied for test operation");
-      // We still consider this a successful connection since Firestore is reachable
+      console.log(
+        "Firestore is connected but permission denied for test operation"
+      );
       isFirestoreConnected = true;
       connectionRetryCount = 0;
       return true;
     }
 
-    console.warn(`Firestore connection check failed: ${errorCode} - ${errorMessage}`);
+    console.warn(
+      `Firestore connection check failed: ${errorCode} - ${errorMessage}`
+    );
     isFirestoreConnected = false;
     connectionRetryCount++;
 
-    // Log more detailed information for debugging
     if (errorCode === "unavailable") {
-      console.log("Firestore backend is currently unavailable. Will retry automatically.");
+      console.log("Firestore backend is currently unavailable. Retrying...");
     } else if (errorMessage.includes("network")) {
-      console.log("Network appears to be offline. Firestore will use cached data.");
+      console.log("Network appears offline. Using cached data.");
     }
 
-    // If we've tried too many times, log a more detailed error
     if (connectionRetryCount >= MAX_RETRY_COUNT) {
-      console.error(`Failed to connect to Firestore after ${MAX_RETRY_COUNT} attempts. Using offline mode.`);
-
-      // Try to disable and re-enable the network to force a reconnection
+      console.error(
+        `Failed to connect to Firestore after ${MAX_RETRY_COUNT} attempts. Using offline mode.`
+      );
       try {
         await disableNetwork(db);
         setTimeout(async () => {
@@ -171,27 +166,19 @@ export async function checkFirestoreConnection(): Promise<boolean> {
   }
 }
 
-// Add a function to start periodic connection checks
 export function startConnectionMonitoring(intervalMs = 30000): void {
   if (typeof window === "undefined") return;
-  
   if (connectionCheckInterval) {
     clearInterval(connectionCheckInterval);
   }
-
-  // Initial check
   checkFirestoreConnection();
-
-  // Set up periodic checks
   connectionCheckInterval = setInterval(() => {
     checkFirestoreConnection();
   }, intervalMs);
 }
 
-// Add a function to stop connection monitoring
 export function stopConnectionMonitoring(): void {
   if (typeof window === "undefined") return;
-  
   if (connectionCheckInterval) {
     clearInterval(connectionCheckInterval);
     connectionCheckInterval = null;
@@ -202,7 +189,7 @@ export function isFirestoreCurrentlyConnected(): boolean {
   return isFirestoreConnected;
 }
 
-// Initialize Firebase with all services and return them
+// —————— initFirebase helper (unchanged) ——————
 export const initFirebase = () => {
   try {
     const firebaseApp = getFirebaseApp();
@@ -215,30 +202,35 @@ export const initFirebase = () => {
       firebaseAuth = getAuth(firebaseApp);
       firebaseStorage = getStorage(firebaseApp);
 
-      // Use emulator if specified (client-side only)
       if (process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === "true") {
         console.log("Using Firebase emulator");
         connectFirestoreEmulator(firebaseDb, "localhost", 8080);
       }
     }
 
-    return { firebaseApp, auth: firebaseAuth, db: firebaseDb, storage: firebaseStorage };
+    return {
+      firebaseApp,
+      auth: firebaseAuth,
+      db: firebaseDb,
+      storage: firebaseStorage,
+    };
   } catch (error) {
     console.error("Error initializing Firebase:", error);
     throw error;
   }
 };
 
-
-
-// Initialize Firebase on module load (client only)
+// —————— Auto-initialize on module load (unchanged) ——————
 if (typeof window !== "undefined" && !getApps().length) {
   console.log("Initializing Firebase on module load");
   initFirebase();
 }
 
-// Add a function to log connection status to a user document
-export async function logConnectionStatus(userId: string, status: "online" | "offline"): Promise<void> {
+// —————— logConnectionStatus helper (unchanged) ——————
+export async function logConnectionStatus(
+  userId: string,
+  status: "online" | "offline"
+): Promise<void> {
   if (!userId || !db) return;
 
   try {
@@ -251,7 +243,7 @@ export async function logConnectionStatus(userId: string, status: "online" | "of
           timestamp: serverTimestamp(),
         },
       },
-      { merge: true },
+      { merge: true }
     );
   } catch (error) {
     console.error("Failed to log connection status:", error);
