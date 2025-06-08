@@ -3,7 +3,7 @@ import { DashboardShell } from "@/components/dashboard/dashboard-shell"
 import { BudgetsList } from "@/components/budgets/budgets-list"
 
 export const metadata: Metadata = {
-  title: "Budgets | Rose Finance",
+  title: "Budgets | BucksDash",
   description: "Manage your monthly budgets and track your spending",
 }
 

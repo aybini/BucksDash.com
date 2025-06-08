@@ -19,7 +19,14 @@ import {
   TrendingUp, 
   DollarSign,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  Loader2,
+  Shield,
+  Sparkles,
+  Target,
+  Zap,
+  Activity,
+  Brain
 } from "lucide-react"
 import { getTransactions, type Transaction } from "@/lib/firebase-service" // Import from firebase service
 
@@ -58,6 +65,14 @@ type HealthScoreData = {
   change: number;
   breakdown: ScoreBreakdown[];
   nextGoals: string[];
+}
+
+interface Particle {
+  id: number
+  left: number
+  top: number
+  animationDelay: number
+  animationDuration: number
 }
 
 // Helper function to safely get a Date from a transaction date field (handles Firestore Timestamp)
@@ -371,6 +386,23 @@ export default function FinancialInsightsPage() {
   const [insights, setInsights] = useState<Insight[]>([]);
   const [healthScore, setHealthScore] = useState<HealthScoreData | null>(null);
   const [activeInsightId, setActiveInsightId] = useState<number | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
+  const [particles, setParticles] = useState<Particle[]>([]);
+
+  useEffect(() => {
+    // Generate particles only on client side to prevent hydration mismatch
+    const generatedParticles = [...Array(15)].map((_, i) => ({
+      id: i,
+      left: Math.random() * 100,
+      top: Math.random() * 100,
+      animationDelay: Math.random() * 5,
+      animationDuration: 3 + Math.random() * 4
+    }))
+    setParticles(generatedParticles)
+    
+    // Trigger entrance animation
+    setTimeout(() => setIsVisible(true), 100)
+  }, [])
 
   useEffect(() => {
     setIsClient(true);
@@ -412,11 +444,24 @@ export default function FinancialInsightsPage() {
   // Show loading state or nothing during SSR
   if (loading || !isClient) {
     return (
-      <DashboardShell>
-        <div className="flex items-center justify-center h-64">
-          <p>Loading your financial insights...</p>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-purple-50/30 to-white dark:from-gray-900 dark:via-purple-900/20 dark:to-gray-900 relative overflow-hidden">
+        {/* Enhanced Background Elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-400/20 dark:bg-purple-500/10 rounded-full blur-3xl animate-pulse shadow-2xl" />
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-500/20 dark:bg-purple-600/10 rounded-full blur-3xl animate-pulse shadow-2xl" style={{ animationDelay: '2s' }} />
         </div>
-      </DashboardShell>
+        
+        <div className="flex items-center justify-center h-screen">
+          <div className="bg-white/90 dark:bg-white/10 backdrop-blur-xl rounded-3xl p-8 border border-gray-200/50 dark:border-white/20 shadow-2xl relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-transparent rounded-3xl animate-pulse" />
+            <div className="relative z-10 flex items-center justify-center space-x-4 text-gray-900 dark:text-white">
+              <Loader2 className="w-8 h-8 border-3 border-purple-500 border-t-transparent rounded-full animate-spin" />
+              <span className="text-xl font-semibold animate-pulse">Loading your financial insights...</span>
+              <Brain className="w-6 h-6 text-purple-500 animate-pulse" />
+            </div>
+          </div>
+        </div>
+      </div>
     );
   }
 
@@ -429,10 +474,10 @@ export default function FinancialInsightsPage() {
   const renderInsightIcon = (insight: Insight) => {
     const backgroundColor = 
       insight.type === "expense" 
-        ? "bg-rose-100" 
+        ? "bg-rose-100 dark:bg-rose-900/30" 
         : insight.impact === "high" 
-          ? "bg-green-100" 
-          : "bg-blue-100";
+          ? "bg-green-100 dark:bg-green-900/30" 
+          : "bg-blue-100 dark:bg-blue-900/30";
     
     return (
       <div className={`rounded-full ${backgroundColor} p-3`}>
@@ -445,89 +490,92 @@ export default function FinancialInsightsPage() {
   const renderInsightCard = (insight: Insight) => {
     const isActive = activeInsightId === insight.id;
     
-    const borderColor = 
-      insight.type === "expense" 
-        ? "border-rose-200" 
-        : insight.impact === "high" 
-          ? "border-green-200" 
-          : "border-blue-200";
-    
-    const gradientBg = 
-      insight.type === "expense" 
-        ? "bg-gradient-to-br from-white to-rose-50" 
-        : insight.impact === "high" 
-          ? "bg-gradient-to-br from-white to-green-50" 
-          : "bg-gradient-to-br from-white to-blue-50";
-    
     return (
-      <Card 
+      <div 
         key={insight.id} 
-        className={`overflow-hidden border-2 ${borderColor} ${gradientBg} transition-all ${isActive ? 'ring-2 ring-rose-400' : ''}`}
+        className={`bg-white/90 dark:bg-white/10 backdrop-blur-xl rounded-3xl p-6 border border-gray-200/50 dark:border-white/20 shadow-2xl relative overflow-hidden group hover:shadow-3xl transition-all duration-500 ${isActive ? 'ring-2 ring-purple-400' : ''}`}
       >
-        <CardHeader className="p-4">
-          <div className="flex items-start gap-4">
+        {/* Card Glow Effect */}
+        <div className={`absolute inset-0 bg-gradient-to-r ${
+          insight.type === "expense" 
+            ? "from-rose-500/5 via-transparent to-rose-500/5 dark:from-rose-500/10 dark:to-transparent" 
+            : "from-green-500/5 via-transparent to-green-500/5 dark:from-green-500/10 dark:to-transparent"
+        } rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
+        
+        <div className="relative z-10">
+          <div className="flex items-start gap-4 mb-4">
             {renderInsightIcon(insight)}
             <div className="flex-1">
-              <CardTitle className="text-lg">{insight.title}</CardTitle>
-              <CardDescription className="mt-1">{insight.description}</CardDescription>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">{insight.title}</h3>
+              <p className="text-gray-600 dark:text-gray-300 mt-1">{insight.description}</p>
             </div>
-            <Badge variant={insight.type === "expense" ? "destructive" : "default"} className="ml-auto">
+            <Badge 
+              variant={insight.type === "expense" ? "destructive" : "default"} 
+              className="ml-auto"
+            >
               {insight.category}
             </Badge>
           </div>
-        </CardHeader>
-        <CardContent className="p-4 pt-0">
-          <div className="rounded-lg bg-white bg-opacity-70 p-3 border border-slate-100">
+          
+          <div className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 rounded-2xl p-4 border border-purple-200/50 dark:border-purple-700/30 mb-4">
             <div className="flex items-center">
               <Lightbulb className="h-4 w-4 text-amber-500 mr-2" />
-              <p className="text-sm font-medium">{insight.actionable}</p>
+              <p className="text-sm font-medium text-gray-900 dark:text-white">{insight.actionable}</p>
             </div>
             <div className="mt-2 flex items-center text-sm">
-              <span className="font-semibold mr-2">Potential savings:</span>
+              <span className="font-semibold mr-2 text-gray-900 dark:text-white">Potential savings:</span>
               <Badge variant={insight.type === "expense" ? "outline" : "secondary"} className="font-mono">
                 {insight.savings}
               </Badge>
             </div>
           </div>
-        </CardContent>
-        <CardFooter className="p-4 pt-0 flex justify-between">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => setActiveInsightId(insight.id === activeInsightId ? null : insight.id)}
-          >
-            <FileQuestion className="h-4 w-4 mr-2" />
-            {isActive ? "Show Less" : "More Details"}
-          </Button>
-          <Button size="sm" className="bg-rose-600 hover:bg-rose-700">
-            Take Action
-            <ArrowRight className="h-4 w-4 ml-2" />
-          </Button>
-        </CardFooter>
-      </Card>
+          
+          <div className="flex justify-between">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setActiveInsightId(insight.id === activeInsightId ? null : insight.id)}
+              className="hover:bg-white/50 dark:hover:bg-white/10"
+            >
+              <FileQuestion className="h-4 w-4 mr-2" />
+              {isActive ? "Show Less" : "More Details"}
+            </Button>
+            <Button 
+              size="sm" 
+              className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+            >
+              Take Action
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+          </div>
+        </div>
+      </div>
     );
   };
 
   // Function to render the spending breakdown section
   const renderSpendingBreakdown = () => {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <BarChart3 className="mr-2 h-5 w-5 text-rose-600" />
-            Monthly Spending Breakdown
-          </CardTitle>
-          <CardDescription>
-            Overview of your spending categories compared to your budget limits
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+      <div className="bg-white/90 dark:bg-white/10 backdrop-blur-xl rounded-3xl p-6 border border-gray-200/50 dark:border-white/20 shadow-2xl relative overflow-hidden group hover:shadow-3xl transition-all duration-500">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-transparent to-blue-500/5 dark:from-blue-500/10 dark:to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        
+        <div className="relative z-10">
+          <div className="flex items-center space-x-3 mb-6">
+            <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-900/30">
+              <BarChart3 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Monthly Spending Breakdown</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Overview of your spending categories compared to your budget limits</p>
+            </div>
+          </div>
+          
           <div className="space-y-4">
             {spendingBreakdown.map((item, index) => (
               <div key={index} className="space-y-1">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
-                    <span className="font-medium text-sm">{item.category}</span>
+                    <span className="font-medium text-sm text-gray-900 dark:text-white">{item.category}</span>
                     {item.trend === "up" && (
                       <div className="flex items-center ml-1">
                         <TrendingUp className="h-3 w-3 text-rose-500" />
@@ -546,13 +594,13 @@ export default function FinancialInsightsPage() {
                     )}
                   </div>
                   <div className="text-sm text-right">
-                    <span className={`font-mono ${item.amount > item.limit ? "text-rose-600 font-medium" : ""}`}>
+                    <span className={`font-mono ${item.amount > item.limit ? "text-rose-600 font-medium" : "text-gray-900 dark:text-white"}`}>
                       ${item.amount.toFixed(0)}
                     </span>
-                    <span className="text-muted-foreground"> / ${item.limit}</span>
+                    <span className="text-gray-500 dark:text-gray-400"> / ${item.limit}</span>
                   </div>
                 </div>
-                <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                <div className="h-2 w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                   <div 
                     className={`h-full rounded-full ${
                       item.amount > item.limit ? "bg-rose-500" : "bg-emerald-500"
@@ -564,15 +612,15 @@ export default function FinancialInsightsPage() {
             ))}
           </div>
 
-          <div className="mt-6 pt-4 border-t">
+          <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between mb-2">
-              <h4 className="font-medium text-sm">Total Spending</h4>
+              <h4 className="font-medium text-sm text-gray-900 dark:text-white">Total Spending</h4>
               <div>
-                <span className="font-mono font-medium">${totalSpending.toFixed(0)}</span>
-                <span className="text-muted-foreground"> / ${totalBudget}</span>
+                <span className="font-mono font-medium text-gray-900 dark:text-white">${totalSpending.toFixed(0)}</span>
+                <span className="text-gray-500 dark:text-gray-400"> / ${totalBudget}</span>
               </div>
             </div>
-            <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden">
+            <div className="h-3 w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
               <div 
                 className={`h-full rounded-full ${isOverBudget ? "bg-rose-500" : "bg-emerald-500"}`}
                 style={{ width: `${Math.min(100, (totalSpending/totalBudget) * 100)}%` }}
@@ -588,8 +636,8 @@ export default function FinancialInsightsPage() {
               </p>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   };
 
@@ -598,22 +646,25 @@ export default function FinancialInsightsPage() {
     if (!healthScore) return null;
     
     return (
-      <Card className="overflow-hidden">
-        <CardHeader className="bg-gradient-to-r from-rose-50 to-rose-100 border-b">
-          <CardTitle className="flex items-center">
-            <Wallet className="mr-2 h-5 w-5 text-rose-600" />
-            Your Financial Health Score
-          </CardTitle>
-          <CardDescription>
-            A comprehensive assessment of your financial wellbeing
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-6">
+      <div className="bg-white/90 dark:bg-white/10 backdrop-blur-xl rounded-3xl p-6 border border-gray-200/50 dark:border-white/20 shadow-2xl relative overflow-hidden group hover:shadow-3xl transition-all duration-500">
+        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 via-transparent to-purple-500/5 dark:from-purple-500/10 dark:to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        
+        <div className="relative z-10">
+          <div className="flex items-center space-x-3 mb-6">
+            <div className="p-2 rounded-xl bg-purple-100 dark:bg-purple-900/30">
+              <Wallet className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Your Financial Health Score</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">A comprehensive assessment of your financial wellbeing</p>
+            </div>
+          </div>
+          
           <div className="flex items-center justify-between">
             <div className="text-center">
               <div className="relative w-32 h-32">
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-4xl font-bold text-rose-600">{healthScore.current}</div>
+                  <div className="text-4xl font-bold text-purple-600 dark:text-purple-400">{healthScore.current}</div>
                 </div>
                 <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
                   <circle
@@ -621,17 +672,19 @@ export default function FinancialInsightsPage() {
                     cy="50"
                     r="40"
                     fill="none"
-                    stroke="#f1f5f9"
+                    stroke="currentColor"
                     strokeWidth="10"
+                    className="text-gray-200 dark:text-gray-700"
                   />
                   <circle
                     cx="50"
                     cy="50"
                     r="40"
                     fill="none"
-                    stroke="#e11d48"
+                    stroke="currentColor"
                     strokeWidth="10"
                     strokeDasharray={`${healthScore.current * 2.51} 251`}
+                    className="text-purple-500"
                   />
                 </svg>
               </div>
@@ -639,20 +692,20 @@ export default function FinancialInsightsPage() {
                 <Badge variant={healthScore.change > 0 ? "secondary" : "destructive"} className="font-mono">
                   {healthScore.change > 0 ? "+" : ""}{healthScore.change} pts
                 </Badge>
-                <p className="text-xs text-muted-foreground mt-1">from last month</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">from last month</p>
               </div>
             </div>
 
             <div className="flex-1 ml-8">
-              <h4 className="text-sm font-medium mb-3">Score Breakdown</h4>
+              <h4 className="text-sm font-medium mb-3 text-gray-900 dark:text-white">Score Breakdown</h4>
               <div className="space-y-3">
                 {healthScore.breakdown.map((item, index) => (
                   <div key={index} className="space-y-1">
                     <div className="flex items-center justify-between text-sm">
-                      <span>{item.category}</span>
-                      <span className="font-medium">{item.score}/100</span>
+                      <span className="text-gray-900 dark:text-white">{item.category}</span>
+                      <span className="font-medium text-gray-900 dark:text-white">{item.score}/100</span>
                     </div>
-                    <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-2 w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                       <div 
                         className={`h-full rounded-full ${
                           item.score < 60 ? "bg-rose-500" : item.score < 75 ? "bg-amber-500" : "bg-emerald-500"
@@ -660,26 +713,26 @@ export default function FinancialInsightsPage() {
                         style={{ width: `${item.score}%` }}
                       ></div>
                     </div>
-                    <div className="text-xs text-slate-500 mt-0.5">{item.insight}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{item.insight}</div>
                   </div>
                 ))}
               </div>
               
-              <div className="mt-4 pt-3 border-t">
-                <h4 className="text-sm font-medium mb-2">Your Next Goals</h4>
+              <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
+                <h4 className="text-sm font-medium mb-2 text-gray-900 dark:text-white">Your Next Goals</h4>
                 <ul className="space-y-1">
                   {healthScore.nextGoals.map((goal, index) => (
                     <li key={index} className="flex items-center text-sm">
-                      <ArrowRight className="h-3 w-3 mr-1 text-rose-600 flex-shrink-0" />
-                      <span>{goal}</span>
+                      <ArrowRight className="h-3 w-3 mr-1 text-purple-600 flex-shrink-0" />
+                      <span className="text-gray-700 dark:text-gray-300">{goal}</span>
                     </li>
                   ))}
                 </ul>
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   };
 
@@ -694,24 +747,30 @@ export default function FinancialInsightsPage() {
       .slice(0, 3);
       
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Priority Action Items</CardTitle>
-          <CardDescription>
-            These actions will have the biggest impact on improving your financial health
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+      <div className="bg-white/90 dark:bg-white/10 backdrop-blur-xl rounded-3xl p-6 border border-gray-200/50 dark:border-white/20 shadow-2xl relative overflow-hidden group hover:shadow-3xl transition-all duration-500">
+        <div className="absolute inset-0 bg-gradient-to-r from-amber-500/5 via-transparent to-amber-500/5 dark:from-amber-500/10 dark:to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        
+        <div className="relative z-10">
+          <div className="flex items-center space-x-3 mb-6">
+            <div className="p-2 rounded-xl bg-amber-100 dark:bg-amber-900/30">
+              <Target className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Priority Action Items</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">These actions will have the biggest impact on improving your financial health</p>
+            </div>
+          </div>
+          
           <div className="space-y-4">
             {priorityInsights.map((insight, index) => (
               <div key={index} className="flex items-center">
                 <div className={`flex h-8 w-8 items-center justify-center rounded-full 
-                  ${insight.type === 'expense' ? 'bg-rose-100 text-rose-600' : 'bg-green-100 text-green-600'}`}>
+                  ${insight.type === 'expense' ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400' : 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'}`}>
                   {index + 1}
                 </div>
                 <div className="ml-4 flex-1">
-                  <h4 className="font-medium">{insight.title}</h4>
-                  <p className="text-sm text-muted-foreground">
+                  <h4 className="font-medium text-gray-900 dark:text-white">{insight.title}</h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
                     {insight.actionable}
                   </p>
                 </div>
@@ -726,14 +785,14 @@ export default function FinancialInsightsPage() {
                 >
                   {insight.impact === 'high' ? 'High Impact' : insight.impact === 'medium' ? 'Medium Impact' : 'Low Impact'}
                 </Badge>
-                <Button size="sm">
+                <Button size="sm" className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700">
                   Start
                 </Button>
               </div>
             ))}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   };
 
@@ -759,78 +818,174 @@ export default function FinancialInsightsPage() {
     }
     
     return (
-      <Card className="bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-200">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg flex items-center">
-            <PiggyBank className="h-5 w-5 mr-2 text-emerald-600" />
-            Potential Monthly Savings
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="bg-white/90 dark:bg-white/10 backdrop-blur-xl rounded-3xl p-6 border border-gray-200/50 dark:border-white/20 shadow-2xl relative overflow-hidden group hover:shadow-3xl transition-all duration-500">
+        <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-transparent to-emerald-500/5 dark:from-emerald-500/10 dark:to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        
+        <div className="relative z-10">
+          <div className="flex items-center space-x-3 mb-4">
+            <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/30">
+              <PiggyBank className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Potential Monthly Savings</h3>
+          </div>
+          
           <div className="flex items-center">
-            <div className="text-3xl font-bold text-emerald-600">{savingsText}</div>
-            <div className="ml-4 text-sm text-slate-600">
+            <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{savingsText}</div>
+            <div className="ml-4 text-sm text-gray-600 dark:text-gray-400">
               {totalSavings > 0 
                 ? "by implementing all recommendations" 
                 : "savings will vary based on your specific situation"}
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   };
 
   return (
-    <div className="flex flex-col space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold tracking-tight">Your Financial Insights</h2>
-        <Button variant="outline" size="sm" className="hidden sm:flex">
-          <CheckCircle2 className="mr-1 h-4 w-4" />
-          Track Progress
-        </Button>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-purple-50/30 to-white dark:from-gray-900 dark:via-purple-900/20 dark:to-gray-900 relative overflow-hidden">
+      {/* Enhanced Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-400/20 dark:bg-purple-500/10 rounded-full blur-3xl animate-pulse shadow-2xl" />
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-500/20 dark:bg-purple-600/10 rounded-full blur-3xl animate-pulse shadow-2xl" style={{ animationDelay: '2s' }} />
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-300/10 dark:bg-purple-400/5 rounded-full blur-3xl animate-pulse shadow-2xl" style={{ animationDelay: '4s' }} />
       </div>
 
-      {isLoading ? (
-        <div className="grid gap-6 md:grid-cols-3">
-          <div className="md:col-span-2">
-            <Card className="h-64 flex items-center justify-center">
-              <p className="text-muted-foreground">Loading your financial health score...</p>
-            </Card>
+      {/* Fixed Floating Particles */}
+      <div className="absolute inset-0 pointer-events-none">
+        {particles.map((particle) => (
+          <div
+            key={particle.id}
+            className="absolute w-2 h-2 bg-gradient-to-r from-purple-400 to-purple-600 rounded-full animate-pulse shadow-lg opacity-40"
+            style={{
+              left: `${particle.left}%`,
+              top: `${particle.top}%`,
+              animationDelay: `${particle.animationDelay}s`,
+              animationDuration: `${particle.animationDuration}s`
+            }}
+          />
+        ))}
+      </div>
+
+      <div className={`relative z-10 p-6 transition-all duration-1000 transform ${
+        isVisible ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'
+      }`}>
+        <div className="flex flex-col space-y-8">
+
+          {/* Enhanced Header */}
+          <div className="bg-white/90 dark:bg-white/10 backdrop-blur-xl rounded-3xl p-8 border border-gray-200/50 dark:border-white/20 shadow-2xl relative overflow-hidden group hover:shadow-3xl transition-all duration-500">
+            {/* Card Glow Effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 via-transparent to-purple-500/5 dark:from-purple-500/10 dark:to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <div className="absolute -inset-1 bg-gradient-to-r from-purple-500/20 to-purple-600/20 rounded-3xl blur opacity-0 group-hover:opacity-50 transition-opacity duration-500" />
+            
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 relative z-10">
+              <div className="flex items-center space-x-4 group">
+                <div className="relative">
+                  <h2 className="text-4xl font-bold bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700 bg-clip-text text-transparent drop-shadow-lg">
+                    Financial Insights
+                  </h2>
+                  <div className="absolute -top-1 -right-1 opacity-80 group-hover:opacity-100 transition-opacity duration-300">
+                    <Brain className="w-6 h-6 text-purple-500 animate-pulse drop-shadow-lg" />
+                  </div>
+                  {/* Glow effect behind text */}
+                  <div className="absolute inset-0 text-4xl font-bold text-purple-500/20 blur-lg animate-pulse">
+                    Financial Insights
+                  </div>
+                </div>
+                <div className="hidden sm:flex items-center space-x-2 bg-gradient-to-r from-purple-100 to-purple-50 dark:from-purple-900/30 dark:to-purple-800/20 px-4 py-2 rounded-full border border-purple-200 dark:border-purple-700/50">
+                  <Shield className="w-4 h-4 text-purple-500 animate-pulse" />
+                  <span className="text-sm font-medium text-purple-700 dark:text-purple-300">AI-Powered</span>
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2 bg-gradient-to-r from-indigo-100 to-indigo-50 dark:from-indigo-900/30 dark:to-indigo-800/20 px-4 py-2 rounded-full border border-indigo-200 dark:border-indigo-700/50">
+                  <Sparkles className="w-4 h-4 text-indigo-500 animate-pulse" />
+                  <span className="text-sm font-medium text-indigo-700 dark:text-indigo-300">Smart Analysis</span>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="hidden sm:flex bg-white/50 dark:bg-white/5 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-white/10"
+                >
+                  <CheckCircle2 className="mr-1 h-4 w-4" />
+                  Track Progress
+                </Button>
+              </div>
+            </div>
+
+            {/* Subtitle */}
+            <div className="mt-4 relative z-10">
+              <p className="text-lg text-gray-600 dark:text-gray-300 flex items-center space-x-2">
+                <span>AI-powered analysis of your spending patterns and personalized recommendations</span>
+                <Target className="w-5 h-5 text-purple-500 animate-pulse" />
+              </p>
+            </div>
           </div>
-          <div className="md:col-span-1">
-            <Card className="h-64 flex items-center justify-center">
-              <p className="text-muted-foreground">Loading spending data...</p>
-            </Card>
-          </div>
+
+          {isLoading ? (
+            <div className="grid gap-6 md:grid-cols-3">
+              <div className="md:col-span-2">
+                <div className="bg-white/90 dark:bg-white/10 backdrop-blur-xl rounded-3xl p-8 border border-gray-200/50 dark:border-white/20 shadow-2xl h-64 flex items-center justify-center">
+                  <div className="flex items-center space-x-4">
+                    <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
+                    <p className="text-gray-600 dark:text-gray-300">Loading your financial health score...</p>
+                  </div>
+                </div>
+              </div>
+              <div className="md:col-span-1">
+                <div className="bg-white/90 dark:bg-white/10 backdrop-blur-xl rounded-3xl p-8 border border-gray-200/50 dark:border-white/20 shadow-2xl h-64 flex items-center justify-center">
+                  <div className="flex items-center space-x-4">
+                    <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
+                    <p className="text-gray-600 dark:text-gray-300">Loading spending data...</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="grid gap-6 md:grid-cols-3">
+                <div className="md:col-span-2">
+                  {renderHealthScore()}
+                </div>
+                <div className="md:col-span-1">
+                  {renderSpendingBreakdown()}
+                </div>
+              </div>
+
+              <div className="grid gap-6 grid-cols-1 md:grid-cols-3">
+                <div className="md:col-span-2">
+                  {renderActionItems()}
+                </div>
+                <div className="md:col-span-1">
+                  {renderSavingsSummary()}
+                </div>
+              </div>
+
+              <div className="bg-white/90 dark:bg-white/10 backdrop-blur-xl rounded-3xl p-8 border border-gray-200/50 dark:border-white/20 shadow-2xl relative overflow-hidden group hover:shadow-3xl transition-all duration-500">
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 via-transparent to-purple-500/5 dark:from-purple-500/10 dark:to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                
+                <div className="relative z-10">
+                  <div className="flex items-center space-x-3 mb-6">
+                    <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-600 via-purple-700 to-purple-800 bg-clip-text text-transparent drop-shadow-sm">
+                      Personalized Financial Insights
+                    </h3>
+                    <div className="relative">
+                      <Zap className="w-6 h-6 text-purple-500 animate-pulse drop-shadow-lg group-hover:animate-bounce transition-all duration-300" />
+                      <div className="absolute inset-0 bg-purple-400/20 rounded-full animate-ping opacity-75" />
+                    </div>
+                  </div>
+                  
+                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                    {insights.map(insight => renderInsightCard(insight))}
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
         </div>
-      ) : (
-        <>
-          <div className="grid gap-6 md:grid-cols-3">
-            <div className="md:col-span-2">
-              {renderHealthScore()}
-            </div>
-            <div className="md:col-span-1">
-              {renderSpendingBreakdown()}
-            </div>
-          </div>
-
-          <div className="grid gap-6 grid-cols-1 md:grid-cols-3">
-            <div className="md:col-span-2">
-              {renderActionItems()}
-            </div>
-            <div className="md:col-span-1">
-              {renderSavingsSummary()}
-            </div>
-          </div>
-
-          <div>
-            <h3 className="text-lg font-medium mb-4">Personalized Financial Insights</h3>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {insights.map(insight => renderInsightCard(insight))}
-            </div>
-          </div>
-        </>
-      )}
+      </div>
     </div>
   );
 }
