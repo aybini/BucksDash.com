@@ -186,7 +186,7 @@ export default function CommunityPage() {
   const { user, loading } = useAuth()
   const router = useRouter()
   const [isClient, setIsClient] = useState(false)
-  const [isPremium, setIsPremium] = useState(true) // Set to true for demo purposes
+  const [isPremium, setIsPremium] = useState(false) // Set to true for demo purposes
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("feed")
   const [isVisible, setIsVisible] = useState(false)
@@ -218,8 +218,8 @@ export default function CommunityPage() {
       if (!user) return
       try {
         // For demo purposes, we'll assume premium is true
-        // const subscription = await getSubscriptionDetails(user.uid)
-        // setIsPremium(subscription && subscription.status === "active")
+         const subscription = await getSubscriptionDetails(user.uid)
+         setIsPremium(subscription && subscription.status === "active")
         setIsPremium(true)
       } catch (error) {
         console.error("Error checking subscription status:", error)
