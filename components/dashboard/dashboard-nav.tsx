@@ -71,7 +71,7 @@ export function DashboardNav() {
     {
       href: "/dashboard/learning",
       icon: BookOpen,
-      title: "Learning",
+      title: "Spending Insights",
     },
     {
       href: "/dashboard/connect-accounts",

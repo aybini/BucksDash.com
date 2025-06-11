@@ -347,12 +347,14 @@ export default function TransactionsPage() {
             </div>
           )}
 
-          {/* Enhanced Transactions Table Container */}
-          <div className="bg-white/90 dark:bg-white/10 backdrop-blur-xl rounded-3xl p-8 border border-gray-200/50 dark:border-white/20 shadow-2xl relative overflow-hidden group hover:shadow-3xl transition-all duration-500">
+          {/* Enhanced Transactions Table Container with Fixed Height and Scroll */}
+          <div className="bg-white/90 dark:bg-white/10 backdrop-blur-xl rounded-3xl border border-gray-200/50 dark:border-white/20 shadow-2xl relative overflow-hidden group hover:shadow-3xl transition-all duration-500">
             <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-transparent to-blue-500/5 dark:from-blue-500/10 dark:to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             <div className="absolute -inset-1 bg-gradient-to-r from-blue-500/20 to-blue-600/20 rounded-3xl blur opacity-0 group-hover:opacity-50 transition-opacity duration-500" />
-            <div className="relative z-10">
-              <div className="flex items-center space-x-3 mb-6 group">
+            
+            {/* Header Section - Fixed */}
+            <div className="relative z-10 p-8 pb-6 border-b border-gray-200/50 dark:border-white/20">
+              <div className="flex items-center space-x-3 group">
                 <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 bg-clip-text text-transparent drop-shadow-sm">
                   Transaction History
                 </h3>
@@ -361,12 +363,17 @@ export default function TransactionsPage() {
                   <div className="absolute inset-0 bg-blue-400/20 rounded-full animate-ping opacity-75" />
                 </div>
               </div>
-              
-              <TransactionsTable
-                transactions={filteredTransactions}
-                isLoading={isLoading || isRefreshing}
-                onRefresh={fetchTransactions}
-              />
+            </div>
+
+            {/* Scrollable Content Area */}
+            <div className="relative z-10 h-[600px] overflow-y-auto scrollbar-thin scrollbar-thumb-blue-300 dark:scrollbar-thumb-blue-600 scrollbar-track-gray-100 dark:scrollbar-track-gray-800 hover:scrollbar-thumb-blue-400 dark:hover:scrollbar-thumb-blue-500">
+              <div className="p-8 pt-6">
+                <TransactionsTable
+                  transactions={filteredTransactions}
+                  isLoading={isLoading || isRefreshing}
+                  onRefresh={fetchTransactions}
+                />
+              </div>
             </div>
           </div>
 
