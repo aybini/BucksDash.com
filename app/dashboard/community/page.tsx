@@ -220,7 +220,7 @@ export default function CommunityPage() {
         // For demo purposes, we'll assume premium is true
          const subscription = await getSubscriptionDetails(user.uid)
          setIsPremium(subscription && subscription.status === "active")
-        setIsPremium(true)
+        setIsPremium(false)
       } catch (error) {
         console.error("Error checking subscription status:", error)
       } finally {
