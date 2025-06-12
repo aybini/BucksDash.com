@@ -9,8 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { sendPasswordResetEmail } from "firebase/auth";
-import { auth } from "@/lib/firebase-init";
+import { useAuth } from "@/lib/auth-context";
 import {
   Dialog,
   DialogContent,
@@ -31,10 +30,10 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
-  const [authInitialized, setAuthInitialized] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
   const [isVisible, setIsVisible] = useState(false);
+  const { resetPassword } = useAuth();
 
   // State for error dialog
   const [errorDialog, setErrorDialog] = useState({
@@ -44,56 +43,23 @@ export default function ForgotPasswordPage() {
   });
 
   useEffect(() => {
-    // Check if Firebase Auth is initialized
-    const checkAuth = () => {
-      if (auth) {
-        setAuthInitialized(true);
-
-        // Get email from URL parameters (client‐side) if available
-        const params = new URLSearchParams(window.location.search);
-        const emailParam = params.get("email");
-        if (emailParam) {
-          setEmail(decodeURIComponent(emailParam));
-        }
-
-        // If user is already logged in, redirect to /dashboard
-        const unsubscribe = auth.onAuthStateChanged((user) => {
-          if (user) {
-            router.push("/dashboard");
-          }
-        });
-
-        return unsubscribe;
-      } else {
-        // If auth is not ready yet, retry in 500ms
-        console.log("Auth not initialized yet, retrying...");
-        setTimeout(checkAuth, 500);
-        return () => {};
-      }
-    };
-
-    const unsubscribe = checkAuth();
+    // Get email from URL parameters if available
+    const params = new URLSearchParams(window.location.search);
+    const emailParam = params.get("email");
+    if (emailParam) {
+      setEmail(decodeURIComponent(emailParam));
+    }
 
     // Trigger entrance animation
     const timer = setTimeout(() => setIsVisible(true), 100);
 
     return () => {
-      unsubscribe();
       clearTimeout(timer);
     };
-  }, [router]);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!authInitialized) {
-      setErrorDialog({
-        isOpen: true,
-        title: "Service unavailable",
-        message: "Authentication service is not available. Please try again later.",
-      });
-      return;
-    }
 
     if (!email.trim()) {
       setErrorDialog({
@@ -107,14 +73,7 @@ export default function ForgotPasswordPage() {
     setIsLoading(true);
 
     try {
-      if (!auth) {
-        throw new Error("Authentication service not available");
-      }
-
-      await sendPasswordResetEmail(auth, email.trim(), {
-        url: `${window.location.origin}/login`, // Redirect to login after password reset
-        handleCodeInApp: false,
-      });
+      await resetPassword(email.trim());
 
       setEmailSent(true);
 
@@ -275,7 +234,7 @@ export default function ForgotPasswordPage() {
           </div>
         </div>
       </div>
-    ); // ← This closing parenthesis belongs to the emailSent true block’s return
+    );
   }
 
   // --- RESET FORM UI (default) ---
@@ -455,6 +414,6 @@ export default function ForgotPasswordPage() {
           </Dialog>
         </div>
       </div>
-    </div> // ← This closing </div> matches the very first <div>
+    </div>
   );
 }
