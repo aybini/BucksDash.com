@@ -118,19 +118,42 @@ export function TransactionForm({ isOpen, onClose, transaction, onSuccess }: Tra
 
       setDescription(transaction.description || "")
       setAmount(transaction.amount?.toString() || "")
-      setCategory(transaction.category || "")
       setType(transaction.type || "expense")
       setNotes(transaction.notes || "")
+      
+      // Handle category - ensure it's set properly
+      const transactionCategory = transaction.category || ""
+      
+      if (transactionCategory) {
+        // Always set the category, even if it's not in the loaded categories list
+        setCategory(transactionCategory)
+        
+        // If the category isn't in our loaded categories, add it temporarily
+        if (!categories.includes(transactionCategory)) {
+          setCategories(prev => [...prev, transactionCategory].sort())
+        }
+      } else {
+        // Set to first available category if no category exists
+        if (categories.length > 0) {
+          setCategory(categories[0])
+        }
+      }
     } else if (!transaction && isOpen) {
       // Reset form for new transaction
       setDate(new Date())
       setDescription("")
       setAmount("")
-      setCategory("")
       setType("expense")
       setNotes("")
+      
+      // Set default category for new transactions
+      if (categories.length > 0) {
+        setCategory(categories[0])
+      } else {
+        setCategory("")
+      }
     }
-  }, [transaction, isOpen])
+  }, [transaction, isOpen, categories])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -156,36 +179,26 @@ export function TransactionForm({ isOpen, onClose, transaction, onSuccess }: Tra
     setIsSubmitting(true)
 
     try {
-      // Create the base transaction data
-      const transactionData: Partial<Transaction> = {
-        description,
+      // Create the transaction data
+      const transactionData = {
+        description: description.trim(),
         amount: Number.parseFloat(amount),
         category,
         type,
-      }
-
-      // Only add date if it's defined
-      if (date) {
-        transactionData.date = date
-      } else {
-        transactionData.date = new Date() // Default to current date if undefined
-      }
-
-      // Only add notes if it's defined and not empty
-      if (notes && notes.trim()) {
-        transactionData.notes = notes.trim()
+        date: date || new Date(),
+        ...(notes && notes.trim() && { notes: notes.trim() })
       }
 
       if (transaction?.id) {
         // Update existing transaction
-        await updateTransaction(user.uid, transaction.id, transactionData as Transaction)
+        await updateTransaction(user.uid, transaction.id, transactionData)
         toast({
           title: "Transaction updated",
           description: "Your transaction has been updated successfully.",
         })
       } else {
         // Add new transaction
-        await addTransaction(user.uid, transactionData as Transaction)
+        await addTransaction(user.uid, transactionData)
         toast({
           title: "Transaction added",
           description: "Your transaction has been added successfully.",
@@ -209,7 +222,7 @@ export function TransactionForm({ isOpen, onClose, transaction, onSuccess }: Tra
       console.error("Error saving transaction:", error)
       toast({
         title: "Error",
-        description: "Failed to save transaction. Please try again.",
+        description: `Failed to ${transaction?.id ? 'update' : 'save'} transaction. Please try again.`,
         variant: "destructive",
       })
     } finally {
